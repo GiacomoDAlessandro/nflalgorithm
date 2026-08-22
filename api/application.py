@@ -31,21 +31,30 @@ from utils.api_exceptions import install_exception_handlers
 
 
 def _replace_legacy_routes(app: Any, replacement_router: Any) -> None:
-    """Remove deployment-supplied routes superseded by tracked controllers."""
+    """Remove deployment-supplied routes superseded by tracked controllers.
+
+    Two shapes of stale route are dropped. A module that declared the endpoint
+    itself contributes a route carrying a path, matched here on path plus
+    methods. A module that already included ``replacement_router`` contributes a
+    wrapper with no path of its own, which the path comparison cannot see; those
+    are matched by wrapped-router identity instead, so re-including below does
+    not leave two copies and a duplicate operation id in the schema.
+    """
     replacement_keys = {
         (route.path, frozenset(route.methods or set()))
         for route in replacement_router.routes
         if getattr(route, "path", None)
     }
-    app.router.routes[:] = [
-        route
-        for route in app.router.routes
-        if (
+
+    def superseded(route: Any) -> bool:
+        if getattr(route, "original_router", None) is replacement_router:
+            return True
+        return (
             getattr(route, "path", None),
             frozenset(getattr(route, "methods", None) or set()),
-        )
-        not in replacement_keys
-    ]
+        ) in replacement_keys
+
+    app.router.routes[:] = [route for route in app.router.routes if not superseded(route)]
 
 
 _replace_legacy_routes(app, pipeline_router)

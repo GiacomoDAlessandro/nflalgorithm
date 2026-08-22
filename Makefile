@@ -1,7 +1,7 @@
 # NFL Algorithm Professional Pipeline Makefile - UV Enhanced
 # Supports both UV and traditional venv for seamless transition
 
-.PHONY: help list-targets install install-uv install-venv runtime-preflight runtime-production-preflight doctor doctor-production doctor-season doctor-preseason migrate test lint format validate mae-gate optimize dashboard api-preflight api-serve api api-prod-serve api-prod pipeline-worker pipeline-worker-once frontend-install frontend-dev frontend-build fullstack clean report validate-report backfill-accuracy run-agents ingest-nfl ingest-nba nba-train nba-predict nba-odds nba-value nba-risk nba-agents nba-full nba-train-pts nba-train-reb nba-train-ast nba-train-fg3m nba-grade nba-injuries nba-learn nba-report nba-tune nfl-train nfl-tune demo nba-importance nba-drift nba-calibrate nba-backtest week week-update week-predict week-refresh week-materialize week-grade week-lines week-research week-auto db-analyze production-run health
+.PHONY: help list-targets install install-uv install-venv runtime-preflight runtime-production-preflight doctor doctor-production doctor-season doctor-preseason migrate local-stack test lint format validate mae-gate optimize dashboard api-preflight api-serve api api-prod-serve api-prod pipeline-worker pipeline-worker-once frontend-install frontend-dev frontend-build fullstack clean report validate-report backfill-accuracy run-agents ingest-nfl ingest-nba nba-train nba-predict nba-odds nba-value nba-risk nba-agents nba-full nba-train-pts nba-train-reb nba-train-ast nba-train-fg3m nba-grade nba-injuries nba-learn nba-report nba-tune nfl-train nfl-tune demo nba-importance nba-drift nba-calibrate nba-backtest week week-update week-predict week-refresh week-materialize week-grade week-lines week-research week-auto db-analyze production-run health
 
 # Load a Make-compatible local environment file without adding a dotenv dependency.
 ENV_FILE ?= .env
@@ -82,6 +82,7 @@ help:
 	@echo "  make install             Install Python dependencies (UV preferred, venv fallback)"
 	@echo "  make frontend-install    Install locked frontend dependencies"
 	@echo "  make migrate             Back up and migrate the local SQLite database"
+	@echo "  make local-stack         Install local API shims when private modules are absent"
 	@echo "  make doctor              Validate tools, config, database, migrations, keys, and modules"
 	@echo "  make doctor-production   Require live-odds key and private execution modules"
 	@echo "  make doctor-season SEASON=2026 WEEK=1 [SEASON_PHASE=post-run]"
@@ -240,6 +241,12 @@ api-preflight:
 	fi
 
 migrate: api-preflight
+
+# Write local-stack shims for the gitignored private modules so a fresh clone
+# can serve the API. Never overwrites an existing file: a machine holding the
+# real deployment modules must keep them.
+local-stack:
+	$(PYTHON) -m scripts.install_local_stack
 
 runtime-preflight:
 	$(DB_ENV) $(PYTHON) -m scripts.preflight --check-schema
